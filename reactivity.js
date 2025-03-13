@@ -92,6 +92,29 @@ export const ref = (value) => {
     return refObj;
 };
 
+const watch = (source, callback) => {
+    let oldValue;
+    
+    const effectFn = () => {
+        const newValue = typeof source === 'function' ? source() : source;
+        if (oldValue !== newValue) {
+            callback(newValue, oldValue);
+            oldValue = newValue;
+        }
+    };
+    
+    // Инициализация старого значения один раз
+    oldValue = typeof source === 'function' ? source() : source;
+    
+    // Запуск эффекта
+    effect(effectFn);
+};
+
+const watchEffect = (effectFn) => {
+    // Простой подход для watchEffect
+    effect(effectFn);
+};
+
 // Пример использования
 const state = reactive({
     count: 0,
@@ -107,3 +130,22 @@ effect(() => {
 state.count = 1; // Count: 1
 state.count = 2; // Count: 2
 state.name = 'Vue 3 Rocks!';
+
+
+
+// Использование watch для отслеживания отдельного свойства
+watch(
+    () => state.count, // источник
+    (newCount, oldCount) => {
+        console.log(`Count изменился с ${oldCount} на ${newCount}`);
+    }
+);
+
+// Использование watchEffect для отслеживания зависимостей
+watchEffect(() => {
+    console.log(`Текущее значение count: ${state.count}`);
+});
+
+// Изменение значения
+state.count = 1; // Count изменился с 0 на 1 и текущая значение count: 1
+state.count = 2; // Count изменился с 1 на 2 и текущая значение count: 2
