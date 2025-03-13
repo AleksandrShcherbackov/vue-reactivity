@@ -1,6 +1,7 @@
 const effectStack = [];
 const effectMap = new Map();
 
+// ф-я для создания эффекта(упаковки обработчика)
 const effect = (fn) => {
     const effectFn = () => {
         cleanup(fn);
@@ -11,6 +12,7 @@ const effect = (fn) => {
     effectFn();
 };
 
+// ф-я для подписки на изменения свойства
 const trigger = (target, prop) => {
     const depMap = effectMap.get(target);
     if (depMap) {
@@ -23,6 +25,7 @@ const trigger = (target, prop) => {
     }
 };
 
+// ф-я для очистки эффекта от подписок
 const cleanup = (effectFn) => {
     for (const [target, depMap] of effectMap) {
         for (const [prop, deps] of depMap) {
@@ -33,6 +36,7 @@ const cleanup = (effectFn) => {
     }
 };
 
+// ф-я для отслеживания изменений свойства
 const track = (target, prop) => {
     const currentEffect = effectStack[effectStack.length - 1];
     if (currentEffect) {
@@ -50,6 +54,8 @@ const track = (target, prop) => {
     }
 };
 
+
+// ф-я для создания реактивного объекта
 export const reactive = (target) => {
     return new Proxy(target, {
         get(target, prop) {
@@ -70,6 +76,8 @@ export const reactive = (target) => {
     });
 };
 
+
+// ф-я для создания реактивного ссылочного объекта (ref)
 export const ref = (value) => {
     const refObj = {
         get value() {
