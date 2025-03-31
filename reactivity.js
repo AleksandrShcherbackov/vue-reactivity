@@ -57,11 +57,15 @@ const track = (target, prop) => {
 
 // ф-я для создания реактивного объекта
 export const reactive = (target) => {
+    if (typeof target !== 'object' || target === null) {
+        return target; // Не оборачиваем примитивы
+    }
+
     return new Proxy(target, {
         get(target, prop) {
             if (prop in target) {
                 track(target, prop);
-                return target[prop];
+                return reactive(target[prop]);
             }
             throw new Error(`Property '${prop}' does not exist on the target object.`);
         },
@@ -89,6 +93,10 @@ export const ref = (value) => {
             trigger(refObj, 'value');
         }
     };
+    // Если новое значение - объект, оборачиваем его в reactive
+    if (typeof value === 'object' && value !== null) {
+        value = reactive(value);
+    }
     return refObj;
 };
 
@@ -115,6 +123,31 @@ const watchEffect = (effectFn) => {
     effect(effectFn);
 };
 
+const computed = (getter) => {
+    let cachedValue;
+    let dirty = true; // Флаг, указывающий, что значение нужно пересчитать
+
+    const effectFn = () => {
+        if (dirty) {
+            cachedValue = getter(); // Вычисляем значение
+            dirty = false; // Сбрасываем флаг
+        }
+        return cachedValue; // Возвращаем кэшированное значение
+    };
+
+    // Подписываемся на изменения
+    effect(() => {
+        dirty = true; // Устанавливаем флаг dirty, если зависимость изменится
+        effectFn(); // Запускаем эффект
+    });
+
+    return {
+        get value() {
+            return effectFn(); // Возвращаем вычисленное значение
+        }
+    };
+};
+
 // Пример использования
 const state = reactive({
     count: 0,
@@ -130,7 +163,6 @@ effect(() => {
 state.count = 1; // Count: 1
 state.count = 2; // Count: 2
 state.name = 'Vue 3 Rocks!';
-
 
 
 // Использование watch для отслеживания отдельного свойства
@@ -149,3 +181,44 @@ watchEffect(() => {
 // Изменение значения
 state.count = 1; // Count изменился с 0 на 1 и текущая значение count: 1
 state.count = 2; // Count изменился с 1 на 2 и текущая значение count: 2
+
+// Создаем вычисляемое свойство
+const doubleCount = computed(() => state.count * 5);
+
+// Создаем эффект, который будет отслеживать изменения
+effect(() => {
+    console.log(`Count: ${state.count}, Double Count: ${doubleCount.value}`);
+});
+
+// проверим вложенную реактивность
+const state1 = reactive({
+    user: {
+        name: 'Alice',
+        age: 25
+    }
+});
+watchEffect(() => {
+    console.log(`Текущее значение name: ${state1.user.name}`);
+});
+watchEffect(() => {
+    console.log(`Текущее значение name: ${state.name}`);
+});
+// Изменение вложенного свойства не вызовет реакцию
+state1.user.name = 'Vob';
+state.name = 'Bob';
+
+const state2 = ref({
+    user: {
+        name: 'Alice',
+        age: 25
+    }
+});
+
+// Создаем эффект, который будет отслеживать изменения
+effect(() => {
+    console.log(`User Name: ${state2.value.user.name}, Age: ${state2.value.user.age}`);
+});
+
+// Изменяем вложенные свойства
+state2.value.user.name = 'Bob'; // User Name: Bob, Age: 25
+state2.value.user.age = 30; // User Name: Bob, Age: 30
